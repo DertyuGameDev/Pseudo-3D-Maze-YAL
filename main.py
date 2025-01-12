@@ -2,24 +2,8 @@ import pygame
 import sys
 import math
 
-# Global constants
-SCREEN_HEIGHT = 600
-SCREEN_WIDTH = 1200
-MAP_SIZE = 8
-TILE_SIZE = SCREEN_WIDTH // (2 * MAP_SIZE)
-
-# Define colors
-
-MAP = (
-    '########'
-    '# #    #'
-    '# #  ###'
-    '#      #'
-    '##     #'
-    '#      #'
-    '#      #'
-    '########'
-)
+from field import Field
+from tools import *
 
 
 class PlayerSprite(pygame.sprite.Sprite):
@@ -47,9 +31,9 @@ def check_collision(new_x, new_y):
 class Player:
     FOV = math.pi / 3
     HALF_FOV = FOV / 2
-    CASTED_RAYS = 100
+    CASTED_RAYS = 150
     STEP_ANGLE = FOV / CASTED_RAYS
-    MAX_DEPTH = 1000
+    MAX_DEPTH = 600
 
     def __init__(self):
         self.player_x = SCREEN_WIDTH // 4
@@ -103,18 +87,6 @@ class Player:
     def render(self, screen):
         self.sprite.update(self.player_x, self.player_y)
         screen.blit(self.sprite.image, self.sprite.rect)
-
-
-class Field:
-    def __init__(self, screen):
-        self.screen = screen
-
-    def draw_map(self):
-        for i in range(MAP_SIZE):
-            for j in range(MAP_SIZE):
-                square = i * MAP_SIZE + j
-                color = 'gray' if MAP[square] == '#' else 'black'
-                pygame.draw.rect(self.screen, color, (j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
 
 class Engine:
