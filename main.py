@@ -153,7 +153,7 @@ class Engine:
 
         # Load wall textures
         self.textures = {
-            1: pygame.image.load('modern-new-painted-metal-surface.jpg').convert(),
+            # 1: pygame.image.load('modern-new-painted-metal-surface.jpg').convert(),
             # 2: pygame.image.load('IMG_5283.PNG').convert(),
         }
 
