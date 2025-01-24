@@ -5,11 +5,27 @@ import AlgorithmMaze
 
 SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1200
-MAP_SIZE = AlgorithmMaze.SIZE
+MAP_SIZE = AlgorithmMaze.SIZE + 1
 TILE_SIZE = SCREEN_WIDTH // 10 // MAP_SIZE
+
 MAP = []
-for i in AlgorithmMaze.generation():
+for i in AlgorithmMaze.generathion_maze():
     MAP += i
+
+LIST_MAP = [[' '] * MAP_SIZE for _ in range(MAP_SIZE)]
+world_map = set()
+start_row, start_col = 0, 0
+for i in range(len(MAP) - 1):
+    if MAP[i] in (1, 2):
+        LIST_MAP[i // MAP_SIZE][i % MAP_SIZE] = '#'
+        world_map.add((i // MAP_SIZE * TILE_SIZE * 2, i % MAP_SIZE * TILE_SIZE * 2))
+    if not start_row and not start_col and MAP[i] == 0:
+        start_row, start_col = i // MAP_SIZE, i % MAP_SIZE
+
+# print(world_map)
+
+# for el in LIST_MAP:
+#     print(''.join(el))
 
 
 class PlayerSprite(pygame.sprite.Sprite):
@@ -25,13 +41,15 @@ class PlayerSprite(pygame.sprite.Sprite):
 
 
 def check_collision(new_x, new_y):
-    col = int(new_x / TILE_SIZE)
-    row = int(new_y / TILE_SIZE)
+    if new_x > 2 * TILE_SIZE * MAP_SIZE or new_y > 2 * TILE_SIZE * MAP_SIZE or new_x < 0 or new_y < 0:
+        return False
 
-    if 0 <= col < MAP_SIZE and 0 <= row < MAP_SIZE:
-        square = row * MAP_SIZE + col
-        return not (MAP[square] == 0)
-    return False
+    col = int(new_x // TILE_SIZE) // 2
+    row = int(new_y // TILE_SIZE) // 2
+
+    if LIST_MAP[row][col] == '#':
+        return False
+    return True
 
 
 class Player:
@@ -42,11 +60,15 @@ class Player:
     STEP_ANGLE = FOV / CASTED_RAYS
     MAX_DEPTH = 800
 
+    DIST = CASTED_RAYS / (2 * math.tan(HALF_FOV))
+    PROJ_COEF = DIST * TILE_SIZE * 2
+    SCALE = SCREEN_WIDTH // CASTED_RAYS
+
     def __init__(self):
-        self.player_x = SCREEN_WIDTH // 10 - TILE_SIZE * MAP_SIZE // 2
-        self.player_y = SCREEN_HEIGHT // 10
+        self.player_x = start_row * TILE_SIZE * 2 + 3
+        self.player_y = start_col * TILE_SIZE * 2 + 3
         self.player_angle = 0
-        self.speed = 1
+        self.speed = 0.5
         self.sprite = PlayerSprite(TILE_SIZE // 10, self.player_x, self.player_y)
         self.projection_plane_distance = (SCREEN_WIDTH / 2) / math.tan(self.HALF_FOV)
 
@@ -55,61 +77,117 @@ class Player:
                          (self.player_x + math.cos(self.player_angle) * distance,
                           self.player_y + math.sin(self.player_angle) * distance))
 
+    # def rayCast(self, screen, textures):
+    #     start_angle = self.player_angle - Player.HALF_FOV
+    #     for ray in range(Player.CASTED_RAYS):
+    #         ray_angle = start_angle + ray * Player.STEP_ANGLE
+    #         sin_a = math.sin(ray_angle)
+    #         cos_a = math.cos(ray_angle)
+    #
+    #         for depth in range(1, Player.MAX_DEPTH):
+    #             target_x = self.player_x + cos_a * depth
+    #             target_y = self.player_y + sin_a * depth
+    #
+    #             col = int(target_x / TILE_SIZE)
+    #             row = int(target_y / TILE_SIZE)
+    #             if 0 <= col < MAP_SIZE and 0 <= row < MAP_SIZE:
+    #                 square = row * MAP_SIZE + col
+    #                 wall_type = MAP[square]
+    #
+    #                 if wall_type != 0:
+    #                     perpendicular_distance = depth * math.cos(ray_angle - self.player_angle)
+    #                     if perpendicular_distance > 0:
+    #                         wall_height = (TILE_SIZE * self.projection_plane_distance) / perpendicular_distance
+    #                     else:
+    #                         wall_height = SCREEN_HEIGHT
+    #
+    #                     # Применяем затенение на основе расстояния
+    #                     shade = 255 / (1 + depth * depth * 0.001)
+    #
+    #                     # Определяем цвет стены или текстуру
+    #                     color = (shade, shade, shade)
+    #                     texture = textures.get(wall_type, None)
+    #                     if texture:
+    #                         # Рассчитываем отображение текстуры
+    #                         hit_x = target_x % TILE_SIZE
+    #                         texture_width, texture_height = texture.get_size()
+    #                         texture_column = int(hit_x / TILE_SIZE * texture_width)
+    #                         texture_strip = texture.subsurface(
+    #                             (texture_column, 0, 1, texture_height)
+    #                         )
+    #                         scaled_strip = pygame.transform.scale(texture_strip, (
+    #                             SCREEN_WIDTH // Player.CASTED_RAYS, int(wall_height)))
+    #
+    #                         shade_surface = pygame.Surface(scaled_strip.get_size()).convert_alpha()
+    #                         shade_factor = shade / 255  # Нормализуем значение
+    #                         shade_surface.fill((shade_factor * 255, shade_factor * 255, shade_factor * 255))
+    #                         scaled_strip.blit(shade_surface, (0, 0), special_flags=pygame.BLEND_MULT)
+    #                         screen.blit(scaled_strip, (
+    #                             ray * (SCREEN_WIDTH // Player.CASTED_RAYS),
+    #                             (SCREEN_HEIGHT // 2) - (wall_height // 2)))
+    #                     else:
+    #                         pygame.draw.rect(screen, color, (
+    #                             ray * (SCREEN_WIDTH // Player.CASTED_RAYS),
+    #                             (SCREEN_HEIGHT // 2) - (wall_height // 2),
+    #                             SCREEN_WIDTH // Player.CASTED_RAYS,
+    #                             wall_height))
+    #                     break
+    def check_pos(self, x, y):
+        return int(x // TILE_SIZE) // 2 * TILE_SIZE * 2, int(y // TILE_SIZE) // 2 * TILE_SIZE * 2
+
     def rayCast(self, screen, textures):
-        start_angle = self.player_angle - Player.HALF_FOV
+        ox, oy = self.player_x, self.player_y
+        xm, ym = self.check_pos(ox, oy)
+        cur_angle = self.player_angle - Player.HALF_FOV
+
         for ray in range(Player.CASTED_RAYS):
-            ray_angle = start_angle + ray * Player.STEP_ANGLE
-            sin_a = math.sin(ray_angle)
-            cos_a = math.cos(ray_angle)
+            sin_a = math.sin(cur_angle)
+            cos_a = math.cos(cur_angle)
+            sin_a = sin_a if sin_a else 0.000001
+            cos_a = cos_a if cos_a else 0.000001
 
-            for depth in range(1, Player.MAX_DEPTH):
-                target_x = self.player_x + cos_a * depth
-                target_y = self.player_y + sin_a * depth
+            if cos_a >= 0:
+                x = xm + TILE_SIZE
+                dx = 1
+            else:
+                x = xm
+                dx = -1
 
-                col = int(target_x / TILE_SIZE)
-                row = int(target_y / TILE_SIZE)
-                if 0 <= col < MAP_SIZE and 0 <= row < MAP_SIZE:
-                    square = row * MAP_SIZE + col
-                    wall_type = MAP[square]
+            for _ in range(0, 2 * TILE_SIZE * MAP_SIZE, TILE_SIZE):
+                depth_v = (x - ox) / cos_a
+                y = oy + depth_v * sin_a
+                cur_x, cur_y = self.check_pos(x + dx, y)
 
-                    if wall_type != 0:
-                        perpendicular_distance = depth * math.cos(ray_angle - self.player_angle)
-                        if perpendicular_distance > 0:
-                            wall_height = (TILE_SIZE * self.projection_plane_distance) / perpendicular_distance
-                        else:
-                            wall_height = SCREEN_HEIGHT
+                if (cur_x, cur_y) in world_map:
+                    break
+                x += dx * TILE_SIZE
 
-                        # Применяем затенение на основе расстояния
-                        shade = 255 / (1 + depth * depth * 0.001)
+            if sin_a >= 0:
+                y = ym + TILE_SIZE
+                dy = 1
+            else:
+                y = ym
+                dy = -1
 
-                        # Определяем цвет стены или текстуру
-                        color = (shade, shade, shade)
-                        texture = textures.get(wall_type, None)
-                        if texture:
-                            # Рассчитываем отображение текстуры
-                            hit_x = target_x % TILE_SIZE
-                            texture_width, texture_height = texture.get_size()
-                            texture_column = int(hit_x / TILE_SIZE * texture_width)
-                            texture_strip = texture.subsurface(
-                                (texture_column, 0, 1, texture_height)
-                            )
-                            scaled_strip = pygame.transform.scale(texture_strip, (
-                                SCREEN_WIDTH // Player.CASTED_RAYS, int(wall_height)))
+            for _ in range(0, 2 * TILE_SIZE * MAP_SIZE, TILE_SIZE):
+                depth_h = (y - oy) / sin_a
+                x = ox + depth_h * cos_a
+                cur_x, cur_y = self.check_pos(x, y + dy)
+                if (cur_x, cur_y) in world_map:
+                    break
+                y += dy * TILE_SIZE * 2
 
-                            shade_surface = pygame.Surface(scaled_strip.get_size()).convert_alpha()
-                            shade_factor = shade / 255  # Нормализуем значение
-                            shade_surface.fill((shade_factor * 255, shade_factor * 255, shade_factor * 255))
-                            scaled_strip.blit(shade_surface, (0, 0), special_flags=pygame.BLEND_MULT)
-                            screen.blit(scaled_strip, (
-                                ray * (SCREEN_WIDTH // Player.CASTED_RAYS),
-                                (SCREEN_HEIGHT // 2) - (wall_height // 2)))
-                        else:
-                            pygame.draw.rect(screen, color, (
-                                ray * (SCREEN_WIDTH // Player.CASTED_RAYS),
-                                (SCREEN_HEIGHT // 2) - (wall_height // 2),
-                                SCREEN_WIDTH // Player.CASTED_RAYS,
-                                wall_height))
-                        break
+            depth = min(depth_h, depth_v)
+
+            depth *= math.cos(self.player_angle - cur_angle)
+
+            proj_height = Player.PROJ_COEF / depth
+
+            c = 255 / (1 + depth * depth * 0.005)
+
+            pygame.draw.rect(screen, (c, c, c), (ray * Player.SCALE, SCREEN_HEIGHT // 2 - proj_height // 2,
+                                                 Player.SCALE, proj_height))
+            cur_angle += Player.STEP_ANGLE
 
     def move(self, direction, right=False, left=False):
         pxa = self.player_angle
@@ -119,7 +197,7 @@ class Player:
             pya += math.radians(90)
         new_x = self.player_x + math.cos(pxa) * direction * self.speed
         new_y = self.player_y + math.sin(pya) * direction * self.speed
-        if not check_collision(new_x, new_y):
+        if check_collision(new_x, new_y):
             self.player_x = new_x
             self.player_y = new_y
 
@@ -136,8 +214,10 @@ class Field:
         for i in range(MAP_SIZE):
             for j in range(MAP_SIZE):
                 square = i * MAP_SIZE + j
-                color = 'gray' if not (MAP[square] == 0) else 'black'
-                pygame.draw.rect(self.screen, color, (j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+                color = 'gray' if MAP[square] == 0 else 'black'
+                pygame.draw.rect(self.screen, color, (j * TILE_SIZE * 2,
+                                                      i * TILE_SIZE * 2,
+                                                      TILE_SIZE * 2, TILE_SIZE * 2))
 
 
 class Engine:

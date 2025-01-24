@@ -1,6 +1,5 @@
 import random
 
-import numpy as np
 from PIL import Image
 
 SIZE = 30
@@ -45,7 +44,7 @@ def maze_to_image(maze):
     path_color = (255, 255, 255)
 
     img = Image.new('RGB', (SIZE + 1, SIZE + 1))
-    print(maze)
+    # print(maze)
     for x in range(SIZE + 1):
         for y in range(SIZE + 1):
             if maze[x][y] == 0:
@@ -56,7 +55,9 @@ def maze_to_image(maze):
     return img
 
 
-maze = generation()
-create_exit(maze)
-image = maze_to_image(maze)
-image.save('maze.png')
+def generathion_maze():
+    maze = generation()
+    create_exit(maze)
+    image = maze_to_image(maze)
+    image.save('maze.png')
+    return maze
