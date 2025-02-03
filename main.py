@@ -5,11 +5,19 @@ import AlgorithmMaze
 
 SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1200
-MAP_SIZE = AlgorithmMaze.SIZE
+MAP_SIZE = AlgorithmMaze.SIZE + 1
 TILE_SIZE = SCREEN_WIDTH // 10 // MAP_SIZE
 MAP = []
-for i in AlgorithmMaze.generation():
+for i in AlgorithmMaze.generathion_maze():
     MAP += i
+strx = 0
+stry = 0
+for k in range(len(MAP)):
+    if MAP[k] == 0:
+        strx = k // MAP_SIZE
+        stry = k % MAP_SIZE
+        print(strx, stry, len(MAP))
+        break
 
 
 class PlayerSprite(pygame.sprite.Sprite):
@@ -43,8 +51,8 @@ class Player:
     MAX_DEPTH = 800
 
     def __init__(self):
-        self.player_x = SCREEN_WIDTH // 10 - TILE_SIZE * MAP_SIZE // 2
-        self.player_y = SCREEN_HEIGHT // 10
+        self.player_x = strx * TILE_SIZE + 3
+        self.player_y = stry * TILE_SIZE + 3
         self.player_angle = 0
         self.speed = 1
         self.sprite = PlayerSprite(TILE_SIZE // 10, self.player_x, self.player_y)
@@ -153,7 +161,7 @@ class Engine:
 
         # Load wall textures
         self.textures = {
-            1: pygame.image.load('modern-new-painted-metal-surface.jpg').convert(),
+            # 1: pygame.image.load('modern-new-painted-metal-surface.jpg').convert(),
             # 2: pygame.image.load('IMG_5283.PNG').convert(),
         }
 
