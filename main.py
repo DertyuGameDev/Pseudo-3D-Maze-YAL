@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 import AlgorithmMaze
+from start_screen import paint_screen
 
 SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1200
@@ -166,6 +167,9 @@ class Engine:
         }
 
     def loop(self):
+        pygame.mouse.set_visible(True)
+        paint_screen(self.screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+        pygame.mouse.set_visible(False)
         self.field.draw_map()
         while True:
             for event in pygame.event.get():
