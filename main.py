@@ -1,3 +1,5 @@
+import time
+
 import pygame
 import sys
 import math
@@ -8,6 +10,7 @@ SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1200
 MAP_SIZE = AlgorithmMaze.SIZE + 1
 TILE_SIZE = SCREEN_WIDTH // 10 // MAP_SIZE
+START_TIME = 20
 MAP = []
 for i in AlgorithmMaze.generathion_maze():
     MAP += i
@@ -17,8 +20,133 @@ for k in range(len(MAP)):
     if MAP[k] == 0:
         strx = k // MAP_SIZE
         stry = k % MAP_SIZE
-        print(strx, stry, len(MAP))
         break
+
+NEXT_LEVEL = pygame.USEREVENT + 1
+TIMER_EXIT = pygame.USEREVENT + 2
+
+
+class Timer:
+    def __init__(self):
+        self.time_left = START_TIME
+        self.start_time = time.time()
+        self.running = True
+        self.pause_start_time = 0  # Время начала паузы
+
+    def pause(self):
+        if self.running:
+            self.pause_start_time = time.time()  # Запоминаем время начала паузы
+            self.running = False
+
+    def resume(self):
+        if not self.running:
+            pause_duration = time.time() - self.pause_start_time  # Вычисляем длительность паузы
+            self.start_time += pause_duration  # Корректируем start_time на длительность паузы
+            self.running = True
+
+    def reset(self):
+        self.time_left = START_TIME
+        self.start_time = time.time()
+        self.running = True
+
+    def update(self):
+        if self.running:
+            self.time_left = max(0, START_TIME - int(time.time() - self.start_time))
+            if self.time_left == 0:
+                pygame.event.post(pygame.event.Event(TIMER_EXIT))
+
+    def draw(self, screen):
+        font = pygame.font.Font(None, 36)
+        timer_text = font.render(f"Time: {self.time_left}", True, (255, 255, 255))
+        screen.blit(timer_text, (SCREEN_WIDTH - 110, 10))
+
+
+class PauseMenu:
+    def __init__(self, engine):
+        self.engine = engine
+        self.running = False
+
+    def show(self):
+        self.running = True
+        while self.running:
+            self.engine.screen.fill((0, 0, 0))
+            font = pygame.font.Font(None, 50)
+
+            text = font.render("Paused", True, (255, 255, 255))
+            self.engine.screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 100))
+
+            buttons = ["Continue", "Restart", "Exit"]
+            button_rects = []
+            for i, btn_text in enumerate(buttons):
+                btn_text_render = font.render(btn_text, True, (255, 255, 255))
+                btn_rect = btn_text_render.get_rect(center=(SCREEN_WIDTH // 2, 200 + i * 100))
+                button_rects.append((btn_text_render, btn_rect))
+                self.engine.screen.blit(btn_text_render, btn_rect)
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if button_rects[0][1].collidepoint(event.pos):  # Continue
+                        self.running = False
+                        self.engine.paused = False
+                        pygame.mouse.set_visible(False)
+                        return
+                    elif button_rects[1][1].collidepoint(event.pos):  # Restart
+                        self.engine.restart()
+                        return
+                    elif button_rects[2][1].collidepoint(event.pos):  # Exit
+                        pygame.quit()
+                        sys.exit()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.running = False
+                    self.engine.paused = False
+                    pygame.mouse.set_visible(False)
+                    self.engine.timer.resume()
+                    return
+
+
+class GameOverMenu:
+    def __init__(self, engine, score):
+        self.engine = engine
+        self.score = score
+        self.running = False
+
+    def show(self):
+        self.running = True
+        pygame.mouse.set_visible(True)
+        while self.running:
+            self.engine.screen.fill((0, 0, 0))
+            font = pygame.font.Font(None, 50)
+
+            text = font.render(f"Game Over - Score: {self.score}", True, (255, 255, 255))
+            self.engine.screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 100))
+
+            buttons = ["Restart", "Exit"]
+            button_rects = []
+            for i, btn_text in enumerate(buttons):
+                btn_text_render = font.render(btn_text, True, (255, 255, 255))
+                btn_rect = btn_text_render.get_rect(center=(SCREEN_WIDTH // 2, 200 + i * 100))
+                button_rects.append((btn_text_render, btn_rect))
+                self.engine.screen.blit(btn_text_render, btn_rect)
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if button_rects[0][1].collidepoint(event.pos):  # Restart
+                        self.engine.restart()
+                        pygame.mouse.set_visible(False)
+                        return
+                    elif button_rects[1][1].collidepoint(event.pos):  # Exit
+                        pygame.quit()
+                        sys.exit()
 
 
 class PlayerSprite(pygame.sprite.Sprite):
@@ -39,17 +167,19 @@ def check_collision(new_x, new_y):
 
     if 0 <= col < MAP_SIZE and 0 <= row < MAP_SIZE:
         square = row * MAP_SIZE + col
-        return not (MAP[square] == 0)
+        if MAP[square] == -1:
+            pygame.event.post(pygame.event.Event(NEXT_LEVEL))
+        return not (MAP[square] == 0 or MAP[square] == -1)
     return False
 
 
 class Player:
     FOV = math.pi / 3
     HALF_FOV = FOV / 2
-    CASTED_RAYS = 200
+    CASTED_RAYS = 300
     DELTA_ANGLE = FOV / CASTED_RAYS
     STEP_ANGLE = FOV / CASTED_RAYS
-    MAX_DEPTH = 800
+    MAX_DEPTH = 300
 
     def __init__(self):
         self.player_x = strx * TILE_SIZE + 3
@@ -89,7 +219,7 @@ class Player:
                             wall_height = SCREEN_HEIGHT
 
                         # Применяем затенение на основе расстояния
-                        shade = 255 / (1 + depth * depth * 0.001)
+                        shade = 255 / (1 + depth * depth * 4 * 0.001)
 
                         # Определяем цвет стены или текстуру
                         color = (shade, shade, shade)
@@ -107,7 +237,7 @@ class Player:
 
                             shade_surface = pygame.Surface(scaled_strip.get_size()).convert_alpha()
                             shade_factor = shade / 255  # Нормализуем значение
-                            shade_surface.fill((shade_factor * 255, shade_factor * 255, shade_factor * 255))
+                            shade_surface.fill(shade_factor)
                             scaled_strip.blit(shade_surface, (0, 0), special_flags=pygame.BLEND_MULT)
                             screen.blit(scaled_strip, (
                                 ray * (SCREEN_WIDTH // Player.CASTED_RAYS),
@@ -119,6 +249,7 @@ class Player:
                                 SCREEN_WIDTH // Player.CASTED_RAYS,
                                 wall_height))
                         break
+                pygame.draw.line(screen, 'yellow', (self.player_x, self.player_y), (target_x, target_y))
 
     def move(self, direction, right=False, left=False):
         pxa = self.player_angle
@@ -145,7 +276,12 @@ class Field:
         for i in range(MAP_SIZE):
             for j in range(MAP_SIZE):
                 square = i * MAP_SIZE + j
-                color = 'gray' if not (MAP[square] == 0) else 'black'
+                if MAP[square] == 0:
+                    color = 'gray'
+                elif MAP[square] == -1:
+                    color = 'yellow'
+                else:
+                    color = 'black'
                 pygame.draw.rect(self.screen, color, (j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
 
@@ -154,33 +290,86 @@ class Engine:
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.mouse.set_visible(False)
-        self.grab = True
-        pygame.event.set_grab(True)
         self.clock = pygame.time.Clock()
+        pygame.event.set_grab(True)
+        self.timer = Timer()
+        self.paused = False
         self.player = Player()
         self.field = Field(self.screen)
-
+        self.pause_menu = PauseMenu(self)
+        self.game_over_menu = None
         # Load wall textures
         self.textures = {
-            # 1: pygame.image.load('modern-new-painted-metal-surface.jpg').convert(),
-            # 2: pygame.image.load('IMG_5283.PNG').convert(),
+            -1: pygame.image.load('data/yellow.jpg').convert(),
         }
-
-    def loop(self):
         pygame.mouse.set_visible(True)
         paint_screen(self.screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         pygame.mouse.set_visible(False)
-        self.field.draw_map()
+
+    def restart(self):
+        pygame.event.set_grab(True)
+        global MAP, strx, stry
+        MAP = []
+        for i in AlgorithmMaze.generathion_maze():
+            MAP += i
+        strx = stry = 0
+        for k in range(len(MAP)):
+            if MAP[k] == 0:
+                strx, stry = k // MAP_SIZE, k % MAP_SIZE
+                break
+        self.player.player_x = strx * TILE_SIZE + 3
+        self.player.player_y = stry * TILE_SIZE + 3
+        self.timer.reset()
+        pygame.mouse.set_visible(False)
+        self.paused = False
+        self.loop()
+
+    def loop(self):
+        global MAP, strx, stry
+        self.score = 0
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
-                    sys.exit(0)
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    pygame.mouse.set_visible(not pygame.mouse.get_visible())
-                    self.grab = not self.grab
-                    pygame.event.set_grab(self.grab)
-            if self.grab:
+                    sys.exit()
+                if event.type == NEXT_LEVEL:
+                    MAP = []
+                    for i in AlgorithmMaze.generathion_maze():
+                        MAP += i
+                    strx = 0
+                    stry = 0
+                    for k in range(len(MAP)):
+                        if MAP[k] == 0:
+                            strx = k // MAP_SIZE
+                            stry = k % MAP_SIZE
+                            break
+                    self.field.draw_map()
+                    self.score += 1
+                    self.player.player_x = strx * TILE_SIZE + 3
+                    self.player.player_y = stry * TILE_SIZE + 3
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.paused = not self.paused
+                        pygame.mouse.set_visible(self.paused)
+                        if self.paused:
+                            self.timer.pause()  # Ставим таймер на паузу
+                            self.pause_menu.show()
+                        else:
+                            self.timer.resume()  # Возобновляем таймер
+                if event.type == TIMER_EXIT:
+                    with open('base/best.txt', 'r') as fl:
+                        s = int(fl.read())
+                    with open('base/best.txt', 'w') as fl1:
+                        if self.score > s:
+                            fl1.write(str(self.score))
+                        else:
+                            fl1.write(str(s))
+                    self.game_over_menu = GameOverMenu(self, self.score)
+                    self.game_over_menu.show()
+                    return
+
+            if not self.paused:
+                self.timer.update()
                 mouse_x, mouse_y = pygame.mouse.get_rel()
                 self.player.player_angle += mouse_x * 0.001
 
@@ -211,6 +400,7 @@ class Engine:
                 Player.STEP_ANGLE = self.player.FOV / self.player.CASTED_RAYS
             self.player.render(self.screen)
             self.player.normal_vector(self.screen, 35)
+            self.timer.draw(self.screen)
             pygame.display.flip()
             self.clock.tick(60)
 
