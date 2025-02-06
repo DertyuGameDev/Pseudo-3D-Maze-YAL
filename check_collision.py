@@ -1,8 +1,8 @@
 import pygame
-from tools import TILE_SIZE, MAP_SIZE, MAP, NEXT_LEVEL
+from tools import TILE_SIZE, MAP_SIZE, NEXT_LEVEL
 
 
-def check_collision(new_x, new_y):
+def check_collision(new_x, new_y, MAP):
     col = int(new_x / TILE_SIZE)
     row = int(new_y / TILE_SIZE)
 

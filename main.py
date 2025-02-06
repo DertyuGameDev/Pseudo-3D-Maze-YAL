@@ -1,13 +1,27 @@
 import sys
 import math
+import pygame
+
+import AlgorithmMaze
 
 from start_screen import paint_screen
 from timer import Timer
-from tools import *
+from tools import TILE_SIZE, SCREEN_WIDTH, MAP_SIZE, SCREEN_HEIGHT, NEXT_LEVEL, TIMER_EXIT
 from pause_menu import PauseMenu
 from game_over_menu import GameOverMenu
 from check_collision import check_collision
 from player_sprite import PlayerSprite
+
+MAP = []
+for i in AlgorithmMaze.generathion_maze():
+    MAP += i
+strx = 0
+stry = 0
+for k in range(len(MAP)):
+    if MAP[k] == 0:
+        strx = k // MAP_SIZE
+        stry = k % MAP_SIZE
+        break
 
 
 class Player:
@@ -99,7 +113,7 @@ class Player:
             pya += math.radians(90)
         new_x = self.player_x + math.cos(pxa) * direction * self.speed
         new_y = self.player_y + math.sin(pya) * direction * self.speed
-        if not check_collision(new_x, new_y):
+        if not check_collision(new_x, new_y, MAP):
             self.player_x = new_x
             self.player_y = new_y
 
@@ -132,7 +146,6 @@ class Engine:
         pygame.mouse.set_visible(False)
         self.clock = pygame.time.Clock()
         pygame.event.set_grab(True)
-        self.timer = Timer()
         self.paused = False
         self.player = Player()
         self.field = Field(self.screen)
@@ -145,6 +158,7 @@ class Engine:
         pygame.mouse.set_visible(True)
         paint_screen(self.screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         pygame.mouse.set_visible(False)
+        self.timer = Timer()
 
     def restart(self):
         pygame.event.set_grab(True)
@@ -152,10 +166,12 @@ class Engine:
         MAP = []
         for i in AlgorithmMaze.generathion_maze():
             MAP += i
-        strx = stry = 0
+        strx = 0
+        stry = 0
         for k in range(len(MAP)):
             if MAP[k] == 0:
-                strx, stry = k // MAP_SIZE, k % MAP_SIZE
+                strx = k // MAP_SIZE
+                stry = k % MAP_SIZE
                 break
         self.player.player_x = strx * TILE_SIZE + 3
         self.player.player_y = stry * TILE_SIZE + 3
@@ -194,6 +210,7 @@ class Engine:
                         if self.paused:
                             self.timer.pause()  # Ставим таймер на паузу
                             self.pause_menu.show()
+                            self.timer.resume()
                         else:
                             self.timer.resume()  # Возобновляем таймер
                 if event.type == TIMER_EXIT:
