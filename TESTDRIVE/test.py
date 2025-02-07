@@ -300,7 +300,7 @@ class Engine:
         self.game_over_menu = None
         # Load wall textures
         self.textures = {
-            -1: pygame.image.load('data/yellow.jpg').convert(),
+            -1: pygame.image.load('../data/yellow.jpg').convert(),
         }
 
     def restart(self):
@@ -357,9 +357,9 @@ class Engine:
                         else:
                             self.timer.resume()  # Возобновляем таймер
                 if event.type == TIMER_EXIT:
-                    with open('base/best.txt', 'r') as fl:
+                    with open('../base/best.txt', 'r') as fl:
                         s = int(fl.read())
-                    with open('base/best.txt', 'w') as fl1:
+                    with open('../base/best.txt', 'w') as fl1:
                         if self.score > s:
                             fl1.write(str(self.score))
                         else:
