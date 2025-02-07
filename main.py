@@ -121,7 +121,6 @@ class Player:
         self.sprite.update(self.player_x, self.player_y)
         screen.blit(self.sprite.image, self.sprite.rect)
 
-
 class Field:
     def __init__(self, screen):
         self.screen = screen
@@ -137,7 +136,6 @@ class Field:
                 else:
                     color = 'black'
                 pygame.draw.rect(self.screen, color, (j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-
 
 class Engine:
     def __init__(self):
