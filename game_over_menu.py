@@ -1,5 +1,5 @@
 import pygame
-from tools import SCREEN_WIDTH
+from tools import SCREEN_WIDTH, SCREEN_HEIGHT
 
 import sys
 
@@ -27,6 +27,11 @@ class GameOverMenu:
                 btn_rect = btn_text_render.get_rect(center=(SCREEN_WIDTH // 2, 200 + i * 100))
                 button_rects.append((btn_text_render, btn_rect))
                 self.engine.screen.blit(btn_text_render, btn_rect)
+
+            with open("base/best.txt", 'r', encoding="utf8") as f:
+                n = f.read().strip()
+                text = font.render(f"best result: {n}", True, (255, 255, 255))
+                self.engine.screen.blit(text, (SCREEN_WIDTH - 250, SCREEN_HEIGHT - 50))
 
             pygame.display.flip()
 
