@@ -10,5 +10,7 @@ def check_collision(new_x, new_y, MAP):
         square = row * MAP_SIZE + col
         if MAP[square] == -1:
             pygame.event.post(pygame.event.Event(NEXT_LEVEL))
-        return not (MAP[square] == 0 or MAP[square] == -1)
+        if MAP[square] == 3:
+            return 'red'
+        return not (MAP[square] == 0 or MAP[square] == -1 or MAP[square] == 3)
     return False

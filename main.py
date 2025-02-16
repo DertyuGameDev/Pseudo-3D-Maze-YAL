@@ -1,6 +1,7 @@
 import sys
 import math
 import pygame
+from random import randrange
 
 import AlgorithmMaze
 
@@ -23,6 +24,12 @@ for k in range(len(MAP)):
         stry = k % MAP_SIZE
         break
 
+hearth = randrange(len(MAP))
+while MAP[hearth] != 0:
+    hearth = randrange(len(MAP))
+
+MAP[hearth] = 3
+
 
 class Player:
     FOV = math.pi / 3
@@ -32,13 +39,14 @@ class Player:
     STEP_ANGLE = FOV / CASTED_RAYS
     MAX_DEPTH = 300
 
-    def __init__(self):
+    def __init__(self, t):
         self.player_x = strx * TILE_SIZE + 3
         self.player_y = stry * TILE_SIZE + 3
         self.player_angle = 0
         self.speed = 1
         self.sprite = PlayerSprite(TILE_SIZE // 10, self.player_x, self.player_y)
         self.projection_plane_distance = (SCREEN_WIDTH / 2) / math.tan(self.HALF_FOV)
+        self.timer = t
 
     def normal_vector(self, screen, distance):
         pygame.draw.line(screen, 'yellow', (self.player_x, self.player_y),
@@ -74,6 +82,8 @@ class Player:
 
                         # Определяем цвет стены или текстуру
                         color = (shade, shade, shade)
+                        if wall_type == 3:
+                            color = (255, 0, 0)
                         texture = textures.get(wall_type, None)
                         if texture:
                             # Рассчитываем отображение текстуры
@@ -113,13 +123,21 @@ class Player:
             pya += math.radians(90)
         new_x = self.player_x + math.cos(pxa) * direction * self.speed
         new_y = self.player_y + math.sin(pya) * direction * self.speed
-        if not check_collision(new_x, new_y, MAP):
+        ch_col = check_collision(new_x, new_y, MAP)
+        if ch_col == 'red':
+            col = int(new_x / TILE_SIZE)
+            row = int(new_y / TILE_SIZE)
+            square = row * MAP_SIZE + col
+            MAP[square] = 0
+            self.timer.add_time()
+        if not ch_col:
             self.player_x = new_x
             self.player_y = new_y
 
     def render(self, screen):
         self.sprite.update(self.player_x, self.player_y)
         screen.blit(self.sprite.image, self.sprite.rect)
+
 
 class Field:
     def __init__(self, screen):
@@ -133,9 +151,12 @@ class Field:
                     color = 'gray'
                 elif MAP[square] == -1:
                     color = 'yellow'
+                elif MAP[square] == 3:
+                    color = 'red'
                 else:
                     color = 'black'
                 pygame.draw.rect(self.screen, color, (j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+
 
 class Engine:
     def __init__(self):
@@ -145,7 +166,7 @@ class Engine:
         self.clock = pygame.time.Clock()
         pygame.event.set_grab(True)
         self.paused = False
-        self.player = Player()
+
         self.field = Field(self.screen)
         self.pause_menu = PauseMenu(self)
         self.game_over_menu = None
@@ -157,10 +178,11 @@ class Engine:
         paint_screen(self.screen, SCREEN_WIDTH, SCREEN_HEIGHT)
         pygame.mouse.set_visible(False)
         self.timer = Timer()
+        self.player = Player(self.timer)
 
     def restart(self):
         pygame.event.set_grab(True)
-        global MAP, strx, stry
+        global MAP, strx, stry, hearth
         MAP = []
         for i in AlgorithmMaze.generathion_maze():
             MAP += i
@@ -171,6 +193,15 @@ class Engine:
                 strx = k // MAP_SIZE
                 stry = k % MAP_SIZE
                 break
+
+        hearth = randrange(len(MAP))
+        while MAP[hearth] != 0:
+            hearth = randrange(len(MAP))
+
+        MAP[hearth] = 3
+
+        self.timer.add_t = 0
+
         self.player.player_x = strx * TILE_SIZE + 3
         self.player.player_y = stry * TILE_SIZE + 3
         self.timer.reset()
@@ -179,7 +210,7 @@ class Engine:
         self.loop()
 
     def loop(self):
-        global MAP, strx, stry
+        global MAP, strx, stry, hearth
         self.score = 0
         while True:
             for event in pygame.event.get():
@@ -197,6 +228,11 @@ class Engine:
                             strx = k // MAP_SIZE
                             stry = k % MAP_SIZE
                             break
+                    hearth = randrange(len(MAP))
+                    while MAP[hearth] != 0:
+                        hearth = randrange(len(MAP))
+
+                    MAP[hearth] = 3
                     self.field.draw_map()
                     self.score += 1
                     self.player.player_x = strx * TILE_SIZE + 3

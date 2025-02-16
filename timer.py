@@ -9,6 +9,7 @@ class Timer:
         self.start_time = time.time()
         self.running = True
         self.pause_start_time = 0  # Время начала паузы
+        self.add_t = 0
 
     def pause(self):
         if self.running:
@@ -28,7 +29,7 @@ class Timer:
 
     def update(self):
         if self.running:
-            self.time_left = max(0, START_TIME - int(time.time() - self.start_time))
+            self.time_left = max(0, START_TIME - int(time.time() - self.start_time) + self.add_t)
             if self.time_left == 0:
                 pygame.event.post(pygame.event.Event(TIMER_EXIT))
 
@@ -36,3 +37,6 @@ class Timer:
         font = pygame.font.Font(None, 36)
         timer_text = font.render(f"Time: {self.time_left}", True, (0, 255, 255))
         screen.blit(timer_text, (SCREEN_WIDTH - 110, 10))
+
+    def add_time(self):
+        self.add_t += 15
