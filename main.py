@@ -248,15 +248,15 @@ class Engine:
                         else:
                             self.timer.resume()  # Возобновляем таймер
                 if event.type == TIMER_EXIT:
-                    with open('base/best.txt', 'r') as fl:
-                        s = int(fl.read())
-                    with open('base/best.txt', 'w') as fl1:
-                        if self.score > s:
-                            fl1.write(str(self.score))
-                        else:
-                            fl1.write(str(s))
                     self.game_over_menu = GameOverMenu(self, self.score)
                     self.game_over_menu.show()
+                    # with open('base/best.txt', 'r') as fl:
+                    #     s = int(fl.read())
+                    # with open('base/best.txt', 'w') as fl1:
+                    #     if self.score > s:
+                    #         fl1.write(str(self.score))
+                    #     else:
+                    #         fl1.write(str(s))
                     return
 
             if not self.paused:
